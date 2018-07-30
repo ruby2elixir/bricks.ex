@@ -1,6 +1,7 @@
 defmodule Bricks.Socket do
   alias Bricks.Socket
-  alias Bricks.Error.Timeout
+  alias Bricks.Error.{Closed, Timeout}
+
   def recv(socket, size, timeout), do: GenServer.call(socket, {:recv, size, timeout}, timeout)
 
   def send_data(socket, data), do: GenServer.call(socket, {:send, data})
@@ -26,18 +27,18 @@ defmodule Bricks.Socket do
       false ->
 	case recv(socket, limit, step_timeout) do
 	  {:ok, data} -> {:ok, data, false}
-	  {:error, reason} -> {:error, reason}
+	  {:error, reason} -> {:error, reason, false}
 	end
       true ->
 	receive do
 	  {Socket, ^socket, msg} ->
 	    case msg do
 	      {:data, data} -> {:ok, data, true}
-	      :closed -> {:error, :closed}
-	      {:error, reason} -> {:error, reason}
+	      :closed -> {:error, %Closed{}, true}
+	      {:error, reason} -> {:error, reason, true}
 	    end
 	after
-	  step_timeout -> {:error, Timeout.new(step_timeout)}
+	  step_timeout -> {:error, Timeout.new(), true}
 	end
     end
   end

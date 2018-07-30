@@ -1,18 +1,22 @@
 defmodule Bricks.Error.Timeout do
-  @enforce_keys [:timeout, :path]
+  @enforce_keys []
   defstruct @enforce_keys
 
-  def new(timeout, path \\ []), do: %__MODULE__{timeout: timeout, path: path}
+  def new(), do: %__MODULE__{}
 end
 defmodule Bricks.Error.Posix do
-  @enforce_keys [:code, :path]
+  @enforce_keys [:code]
   defstruct @enforce_keys
 
-  def new(code, path \\ []), do: %__MODULE__{code: code, path: path}
+  alias Bricks.Error.Timeout
+
+  def new(:etimedout), do: Timeout.new()
+  def new(code), do: %__MODULE__{code: code}
+
 end
 defmodule Bricks.Error.Closed do
-  @enforce_keys [:path]
+  @enforce_keys []
   defstruct @enforce_keys
 
-  def new(path \\ []), do: %__MODULE__{path: path}
+  def new(), do: %__MODULE__{}
 end
