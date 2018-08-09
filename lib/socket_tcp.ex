@@ -53,7 +53,7 @@ defmodule Bricks.Socket.Tcp do
       {:error, reason}  -> {:reply, {:error, Posix.new(reason)}, tcp}
     end
   end
-k
+  def handle_call(:close, _from, tcp) do
     ret = :gen_tcp.close(tcp.socket)
     {:reply, ret, tcp}
   end
