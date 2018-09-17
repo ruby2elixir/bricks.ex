@@ -3,7 +3,6 @@ defmodule Bricks.Connector.Tcp do
   defstruct @enforce_keys
   alias Bricks.Connector
   alias Bricks.Connector.Tcp
-  import ProtocolEx
  
   @default_connect_timeout 5000
   @default_recv_timeout 5000

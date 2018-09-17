@@ -3,7 +3,7 @@ defmodule Bricks.Connector.Unix do
   defstruct @enforce_keys
   alias Bricks.Connector
   alias Bricks.Connector.Unix
-  import ProtocolEx
+
   @default_tcp_opts [:binary, {:active, false}]
   @default_connect_timeout 3000
   @default_recv_timeout 3000
