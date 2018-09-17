@@ -9,7 +9,6 @@ defmodule Bricks.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       elixirc_paths: elixirc_paths(Mix.env),
-      compilers: Mix.compilers ++ [:protocol_ex],
     ]
   end
 
@@ -31,9 +30,7 @@ defmodule Bricks.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      # {:protocol_ex, git: "https://github.com/OvermindDL1/protocol_ex", branch: "master"},
-      {:protocol_ex, "~> 0.4.0"},
-      {:dbg, "~> 1.0", only: :dev},
+      {:dbg, "~> 1.0", only: [:dev, :test]},
       {:dialyxir, "~> 0.5", only: :dev, runtime: false},
       {:stream_data, "~> 0.4", optional: true},
     ]
