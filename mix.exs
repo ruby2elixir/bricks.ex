@@ -22,7 +22,7 @@ defmodule Bricks.MixProject do
 
   defp extra_applications(:dev), do: extra_applications(:test)
   defp extra_applications(:test), do: [:stream_data | extra_applications(123)]
-  defp extra_applications(_), do: [:logger]
+  defp extra_applications(_), do: [:logger, :public_key]
 
   # Specifies which paths to compile per environment.
   defp elixirc_paths(:test), do: ["lib", "test/lib"]

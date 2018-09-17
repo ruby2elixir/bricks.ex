@@ -5,50 +5,36 @@ defmodule Bricks.Connector.TcpTest do
   alias Bricks.Connector.Tcp
   test "echo passive" do
     {:ok, port} = echo_tcp()
-    tcp = Tcp.new({127,0,0,1}, port)
+    tcp = Tcp.new(%{host: {127,0,0,1}, port: port})
     {:ok, sock} = Connector.connect(tcp)
-    {:ok, ""} = Socket.passify(sock)
+    {:ok, "", sock} = Socket.passify(sock)
     Socket.send_data(sock, "hello world\n")
-    {:ok, "hello world\n", false} = Socket.read(sock, 0, false, 1000)
+    {:ok, "hello world\n", _sock} = Socket.recv(sock, 0, 1000)
   end
 
   test "echo active" do
     {:ok, port} = echo_tcp()
-    tcp = Tcp.new({127,0,0,1}, port)
+    tcp = Tcp.new(%{host: {127,0,0,1}, port: port})
     {:ok, sock} = Connector.connect(tcp)
-    :ok = Socket.actify(sock)
+    {:ok, sock} = Socket.set_active(sock, true)
     Socket.send_data(sock, "hello world\n")
-    {:ok, "hello world\n", true} = Socket.read(sock, 0, true, 1000)
+    %Socket{state: s}=sock
+    assert_receive {:tcp, ^s, "hello world\n"}, 1000
   end
 
-  test "read passive" do
+  test "recv passive" do
     {:ok, port} = echo_tcp()
-    tcp = Tcp.new({127,0,0,1}, port)
+    tcp = Tcp.new(%{host: {127,0,0,1}, port: port})
     {:ok, sock} = Connector.connect(tcp)
-    {:ok, ""} = Socket.passify(sock)
+    {:ok, "", sock} = Socket.passify(sock)
     Socket.send_data(sock, "hello world\n")
-    {:ok, "hello world\n", false} = Socket.read(sock, 0, nil, 1000)
+    {:ok, "hello world\n", _sock} = Socket.recv(sock, 0, 1000)
     {:ok, port} = echo_tcp()
-    tcp = Tcp.new({127,0,0,1}, port)
+    tcp = Tcp.new(%{host: {127,0,0,1}, port: port})
     {:ok, sock} = Connector.connect(tcp)
-    {:ok, ""} = Socket.passify(sock)
+    {:ok, "", sock} = Socket.passify(sock)
     Socket.send_data(sock, "hello world\n")
-    {:ok, "hello world\n", false} = Socket.read(sock, 0, false, 1000)
-  end
-
-  test "read active" do
-    {:ok, port} = echo_tcp()
-    tcp = Tcp.new({127,0,0,1}, port)
-    {:ok, sock} = Connector.connect(tcp)
-    :ok = Socket.actify(sock)
-    Socket.send_data(sock, "hello world\n")
-    {:ok, "hello world\n", true} = Socket.read(sock, 0, nil, 1000)
-    {:ok, port} = echo_tcp()
-    tcp = Tcp.new({127,0,0,1}, port)
-    {:ok, sock} = Connector.connect(tcp)
-    :ok = Socket.actify(sock)
-    Socket.send_data(sock, "hello world\n")
-    {:ok, "hello world\n", true} = Socket.read(sock, 0, true, 1000)
+    {:ok, "hello world\n", _sock} = Socket.recv(sock, 0, 1000)
   end
 
 end

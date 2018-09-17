@@ -8,8 +8,8 @@ defmodule Bricks.Connector.UnixTest do
     {:ok, path} = echo_unix()
     unix = Unix.new(path)
     {:ok, sock} = Connector.connect(unix)
-    {:ok, ""} = Socket.passify(sock)
-    :ok = Socket.send_data(sock, "hello world\n")
-    {:ok, "hello world\n", false} = Socket.read(sock, 0, false, 1000)
+    {:ok, "", sock} = Socket.passify(sock)
+    {:ok, sock} = Socket.send_data(sock, "hello world\n")
+    {:ok, "hello world\n", %Socket{}} = Socket.recv(sock, 0, 1000)
   end
 end
