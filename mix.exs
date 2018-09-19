@@ -6,6 +6,18 @@ defmodule Bricks.MixProject do
       app: :bricks,
       version: "0.1.0",
       elixir: "~> 1.7",
+      package: [
+        licenses: ["Apache 2"],
+        links: %{
+          "Repository" => "https://github.com/irresponsible/bricks.ex",
+          "Hexdocs" => "https://hexdocs.pm/bricks",
+        },
+      ],
+      docs: [
+        main: "Bricks",
+	source_url: "https://github.com/irresponsible/bricks.ex",
+        extras: ["README.md"],
+      ],
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       elixirc_paths: elixirc_paths(Mix.env),

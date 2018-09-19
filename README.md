@@ -2,64 +2,112 @@
 
 A uniform low-level API over unix domain sockets, tcp and tcp/tls connections
 
-## Status: Pre-alpha
+## Status: Beta
 
-NOT ON HEX YET
+Release checklist:
+- Finish docstrings and moduledocs
+- Untuple send_data
 
 Missing:
 - Tls connector and socket (pending tidy of old code)
-- Any sort of connection pooling client
 
-Strange bugs:
-- Tests fail when I uncap the size of Gen.header_map. It's like
-  they're not receiving all the data before the socket is closed, odd.
-
-Annoyances:
-
-- gen_tcp sockets start active for tcp and passive for unix.
-  No, I haven't filed an erlang bug about it because I was too pissed off with jira to finish the process.
-  Workaround: Use Sockets.actify, Sockets.passify to set it explicitly the way you want it.
-- Going passive necessitates clearing the mailbox of existing messages
+<!-- Strange bugs: -->
+<!-- - Tests fail when I uncap the size of Gen.header_map. It's like -->
+<!--   they're not receiving all the data before the socket is closed, odd. -->
 
 ## Usage
 
 ```elixir
 
 alias Bricks.Connector.Unix
-alias Bricks.Client.Simple
-alias Bricks.{Clients, Sockets}
+alias Bricks.{Connector, Socket}
 
 # Here we will connect to a unix socket for a fictional echo service
 # and verify it echoes correctly
 def main() do
   unix = Unix.new("/var/run/echo.sock")
-  client = Simple.new(unix)
-  {:ok, conn} = Clients.connect(client)
+  {:ok, socket} = Connector.connect(unix)
   
-  # Let's start in active mode where we will be sent packets as messages
-  :ok = Sockets.actify(h)
-  :ok = Sockets.send_data(h, "hello world\n")
-  # recv_active is a wrapper around receive
-  {:ok, "hello world\n"} = Socket.recv_active(h)
+  # Let's start with passive mode, where we have to request new data
+  {:ok,"", socket} = Socket.passify(h) # if the server sent more in the meantime, won't be ""
+  :ok = Socket.send_data(socket, "hello world\n")
+  {:ok, "hello world\n", socket} = Socket.recv(socket, 0)
 
-  # And here's how you use passive mode
-  {:ok,""} = Sockets.passify(h) # if the server sent more in the meantime, won't be ""
-  :ok = Sockets.send_data(h, "hello world\n")
-  {:ok, "hello world \n"} = Socket.recv_passive(h, 12)
+  # Here's how you use active mode
+  {:ok, socket} = Socket.set_active(socket, true)
+  :ok = Socket.send_data(socket, "hello world\n")
+  %Socket{state: state, data_tag: data}=socket
+  receive do
+    {^data, ^state, "hello world\n"} -> Socket.close(socket)
+  after 1000 -> throw :timeout
+  end
+
 end
-
 ```
-
 
 ## Overview
 
-There are several important structures:
+### Sockets
 
-- Connectors are responsible for establishing a connection
-- Sockets are the uniform interface over a connection
-- Clients are responsible for managing the lifecycle of sockets
+A Socket represents a connected socket and provides a unified
+interface for interacting with it. Presently there is only one socket,
+`Bricks.Socket.Tcp` which wraps a gen_tcp port, but there are plans
+for a TLS socket as well.
+
+A socket may be in either 'passive' or 'active' mode, in the standard erlang
+gen_tcp sense. When passive, you must call `Socket.recv/2` or `Socket.recv/3`
+to receive additional data. When active, the data will be sent to you as messages,
+along with messages to indicate an error, the socket being closed or the socket
+being made passive (when `Socket.set_active/2` is provided an integer).
+
+The `Socket` structure wraps a few fields:
+```
+:module       - callback module
+:port         - the underlying port or data structure or pid or whatever
+:active       - the current activity status of the socket
+:recv_timeout - the timeout (in milliseconds or :infinity) for recv operations
+```
+There are also some tag fields which are used when you want to pattern match
+in a receive (only when the socket is in active mode):
+
+```
+:data_tag    - When data is received
+:error_tag   - When an error occurs
+:closed_tag  - When the socket is closed
+:passive_tag - When the socket is turned passive
+```
+
+Example usage:
+
+```elixir
+def collect(socket) do
+  Socket.set_active(socket, true)
+end
+
+defp collect_output(
+  %Socket{
+    data_tag: data,
+    error_tag: error,
+    closed_tag: closed,
+    passive_tag: passive,
+    port: port,
+    recv_timeout: timeout,
+  }, acc \\ "") do
+  receive do
+    {^data,    ^port, data}   -> collect_output(socket, acc <> data)
+    {^error,   ^port, reason} -> {:error, reason}
+    {^closed,  ^port} -> {:ok, acc}
+    {^passive, ^port} -> {:error, :went_passive} # demonstration purposes only
+  after timeout -> {:ok, acc}
+  end
+end
+```
 
 ### Connectors
+
+The easiest way to get a socket is to use a connector
+
+Connectors are responsible for establishing a connection
 
 #### Unix Connector
 
@@ -82,25 +130,28 @@ Bricks.Connector.Tcp.new("example.org", 80, [:binary]) # custom gen_tcp opts
 <!-- ```elixir -->
 <!-- ``` -->
 
-### Clients
+## Notes on erlang brokenness
 
-Clients are designed for talking to a single host
+- gen_tcp sockets start active for tcp and passive for unix. Possibly
+  this is version dependent (yay!).
+  Workaround: `Socket.set_active/2` or `Socket.passify/1`
+- Going passive necessitates clearing the mailbox of existing messages
+  Workaround: `Socket.passify/1`.
+- Integer activities
 
-#### Simple Client
+## Copyright and License
 
-The simple client uses a connector to establish a new connection every time.
-Connections will be closed when they are no longer required, there is no reuse of connections.
+Copyright (c) 2018 James Laver
 
-```elixir
-Bricks.Client.Simple.new(connector)
-```
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-### Sockets
+    http://www.apache.org/licenses/LICENSE-2.0
 
-#### TCP
-
-The TCP socket is powered by `:gen_tcp`
-
-<!-- #### TLS -->
-
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 

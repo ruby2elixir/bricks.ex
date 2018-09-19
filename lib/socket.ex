@@ -1,5 +1,22 @@
+# Copyright (c) 2018 James Laver
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 defmodule Bricks.Socket do
-  @enforce_keys [:module, :state, :active, :data_tag, :error_tag, :closed_tag, :passive_tag, :recv_timeout]
+  @moduledoc """
+  
+  """
+  @enforce_keys [:module, :port, :active, :data_tag, :error_tag, :closed_tag, :passive_tag, :recv_timeout]
   defstruct @enforce_keys
 
   alias Bricks.Socket
@@ -9,7 +26,7 @@ defmodule Bricks.Socket do
   @type data :: binary() | charlist()
   @type t :: %Socket{
     module:       atom(),
-    state:        term(),
+    port:         term(),
     active:       active(),
     data_tag:     atom(),
     error_tag:    atom(),
@@ -19,9 +36,9 @@ defmodule Bricks.Socket do
   }
 
   @spec new(map()) :: {:ok, t()} | {:error, {atom() | [atom()], atom() | [atom()] }}
-  def new(%{module: m, state: s, active: a, data_tag: d, error_tag: e, closed_tag: c, passive_tag: p}=opts) do
+  def new(%{module: m, port: s, active: a, data_tag: d, error_tag: e, closed_tag: c, passive_tag: p}=opts) do
     t = Map.get(opts, :recv_timeout, 5000)
-    extra = Map.keys(Map.drop(opts, [:module, :state, :active, :data_tag, :error_tag, :closed_tag, :passive_tag, :recv_timeout]))
+    extra = Map.keys(Map.drop(opts, [:module, :port, :active, :data_tag, :error_tag, :closed_tag, :passive_tag, :recv_timeout]))
     cond do
       not is_atom(m) -> {:error, {:module, :atom}}
       not is_atom(d) -> {:error, {:data_tag, :atom}}
@@ -37,7 +54,7 @@ defmodule Bricks.Socket do
       true ->
         {:ok, %Socket{
             module:       m,
-            state:        s,
+            port:         s,
             active:       a,
             data_tag:     d,
             error_tag:    e,
@@ -71,7 +88,7 @@ defmodule Bricks.Socket do
   @typedoc false
   @type send_error :: Closed.t() | Posix.t()
   @typedoc false
-  @type send_result :: {:ok, t()} | {:error, send_error()}
+  @type send_result :: :ok | {:error, send_error()}
 
   @callback send_data(t(), data()) :: send_result()
   @spec     send_data(t(), data()) :: send_result()
@@ -135,13 +152,13 @@ defmodule Bricks.Socket do
     with {:ok, socket} <- set_active(socket, false),
       do: passify_h(socket, "")
   end
-  defp passify_h(%Socket{state: state, data_tag: d, error_tag: e, closed_tag: c, passive_tag: p}=socket, acc) do
+  defp passify_h(%Socket{port: port, data_tag: d, error_tag: e, closed_tag: c, passive_tag: p}=socket, acc) do
     if active?(socket) do
       receive do
-	{^p, ^state} -> {:ok, acc, %{socket | active: false}}
-	{^e, ^state, reason} -> {:error, reason}
-	{^c, ^state} -> {:closed, acc}
-	{^d, ^state, msg} ->
+	{^p, ^port} -> {:ok, acc, %{socket | active: false}}
+	{^e, ^port, reason} -> {:error, reason}
+	{^c, ^port} -> {:closed, acc}
+	{^d, ^port, msg} ->
 	  case msg do
 	    {:data, data} -> passify_h(socket, acc <> data)
 	    :closed -> {:closed, acc}

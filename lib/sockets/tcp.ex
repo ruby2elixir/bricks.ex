@@ -1,3 +1,17 @@
+# Copyright (c) 2018 James Laver
+# 
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+# 
+#     http://www.apache.org/licenses/LICENSE-2.0
+# 
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 defmodule Bricks.Socket.Tcp do
   alias Bricks.Socket
   alias Bricks.Error.{BadOwner, Closed, Posix}
@@ -11,7 +25,7 @@ defmodule Bricks.Socket.Tcp do
     {:ok, active: active} = :inet.getopts(tcp_port, [:active])
     Socket.new %{
       module:       __MODULE__,
-      state:        tcp_port,
+      port:         tcp_port,
       active:       active,
       data_tag:     :tcp,
       error_tag:    :tcp_error,
@@ -21,21 +35,21 @@ defmodule Bricks.Socket.Tcp do
     }
   end
 
-  def fetch_active(%Socket{state: tcp}) do
+  def fetch_active(%Socket{port: tcp}) do
     case :inet.getopts(tcp, [:active]) do
       {:ok, active: val} -> {:ok, val}
       {:error, code} -> {:error, Posix.new(code)}
     end
   end
 
-  def set_active(%Socket{state: tcp}=socket, active) do
+  def set_active(%Socket{port: tcp}=socket, active) do
     case :inet.setopts(tcp, active: active) do
       :ok -> {:ok, %{ socket | active: active}}
       {:error, code} -> {:error, Posix.new(code)}
     end
   end
 
-  def recv(%Socket{state: tcp, active: false}=socket, size, timeout) do
+  def recv(%Socket{port: tcp, active: false}=socket, size, timeout) do
     case :gen_tcp.recv(tcp, size, timeout) do
       {:ok, data} -> {:ok, data, socket}
       {:error, :closed} -> {:error, Closed.new()}
@@ -43,19 +57,19 @@ defmodule Bricks.Socket.Tcp do
     end
   end
 
-  def send_data(%Socket{state: tcp}=socket, data) do
+  def send_data(%Socket{port: tcp}=socket, data) do
     case :gen_tcp.send(tcp, data) do
-      :ok -> {:ok, socket}
+      :ok -> :ok
       {:error, :closed} -> {:error, Closed.new()}
       {:error, reason}  -> {:error, Posix.new(reason)}
     end
   end
 
-  def close(%Socket{state: tcp}) do
+  def close(%Socket{port: tcp}) do
     :gen_tcp.close(tcp)
   end
   
-  def handoff(%Socket{state: tcp}=socket, pid) do
+  def handoff(%Socket{port: tcp}=socket, pid) do
     case :gen_tcp.controlling_process(tcp, pid) do
       :ok -> {:ok, socket}
       {:error, :closed} -> {:error, Closed.new()}
